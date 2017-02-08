@@ -186,6 +186,7 @@ URLRouter registerWebInterface(C : Object, MethodStyle method_style = MethodStyl
                     // adds underscored params to the route param parser
                     static if (!minfo.hadPathUDA) {
 	                    import vibe.internal.meta.funcattr : IsAttributedParameter;
+	                    import std.range.primitives : empty;
 	                    enum bool startsWithUnderscore(string T) = T == "a";
 						alias hasAttributes = ApplyLeft!(IsAttributedParameter, overload);
 	                    enum param_names = [Filter!(templateAnd!(startsWithUnderscore, hasAttributes), ParameterIdentifierTuple!overload)];

@@ -181,7 +181,29 @@ URLRouter registerWebInterface(C : Object, MethodStyle method_style = MethodStyl
 					subsettings.urlPrefix = concatURL(url_prefix, url, true);
 					registerWebInterface!RT(router, __traits(getMember, instance, M)(), subsettings);
 				} else {
-					auto fullurl = concatURL(url_prefix, url);
+
+                    import std.meta : AliasSeq, ApplyLeft, Filter, templateAnd;
+                    // adds underscored params to the route param parser
+                    static if (!minfo.hadPathUDA) {
+	                    import vibe.internal.meta.funcattr : IsAttributedParameter;
+	                    enum bool startsWithUnderscore(string T) = T == "a";
+						alias hasAttributes = ApplyLeft!(IsAttributedParameter, overload);
+	                    enum param_names = [Filter!(templateAnd!(startsWithUnderscore, hasAttributes), ParameterIdentifierTuple!overload)];
+	                    // TODO: make this configurable
+                        static if (!param_names.empty) {
+                            string endurl;
+                            foreach (name; param_names) {
+                                endurl ~= "/:" ~ name[1 .. $];
+                            }
+                            auto fullurl = concatURL(url_prefix, url.concatURL(endurl));
+                        } else {
+                            auto fullurl = concatURL(url_prefix, url);
+                        }
+	                } else {
+					    auto fullurl = concatURL(url_prefix, url);
+	                }
+				    import vibe.core.log;
+                    logDebug("[Web] registering: %s", fullurl);
 					router.match(minfo.method, fullurl, (HTTPServerRequest req, HTTPServerResponse res) @trusted {
 						handleRequest!(M, overload)(req, res, instance, settings);
 					});

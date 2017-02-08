@@ -764,6 +764,7 @@ private void handleRequest(string M, alias overload, C, ERROR...)(HTTPServerRequ
 			else static if (is(PT == InputStream)) params[i] = req.bodyReader;
 			else static if (is(PT == HTTPServerRequest) || is(PT == HTTPRequest)) params[i] = req;
 			else static if (is(PT == HTTPServerResponse) || is(PT == HTTPResponse)) params[i] = res;
+			else static if (is(PT == Json)) params[i] = res.json;
 			else static if (is(PT == WebSocket)) {} // handled below
 			else static if (param_names[i].startsWith("_")) {
 				if (auto pv = param_names[i][1 .. $] in req.params) {
@@ -778,19 +779,27 @@ private void handleRequest(string M, alias overload, C, ERROR...)(HTTPServerRequ
 			} else {
 				enum has_default = !is(default_values[i] == void);
 		        import vibe.core.log;
+		        import std.algorithm.comparison : among;
+		        // TODO: handle path parameters (and query, form, headers)
 				logDebug("Trying to read %s", param_names[i]);
-				logDebug("Req.json: %s", req.json);
-				//params[i] = req.json.deserializeJson!PT;
-				logDebug("Read %s", param_names[i]);
-                ParamResult pres = readFormParamRec(req, params[i], param_names[i], !has_default, nested_style, err);
-				//static if (has_default) {
-					//if (pres == ParamResult.skipped)
-						//params[i].setVoid(default_values[i]);
-				//} else assert(pres != ParamResult.skipped);
+				ParamResult pres = void;
+				// TODO: more intuitive distinguishment between json and form
+				if (req.method.among(HTTPMethod.POST, HTTPMethod.PUT) && req.json.type != Json.Type.undefined && i == 0) {
+                    params[i].setVoid(req.json.deserializeJson!PT);
+                    pres = ParamResult.ok; // Other: error, skipped
+				    logDebug("Read %s", param_names[i]);
+                } else {
+                    pres = readFormParamRec(req, params[i], param_names[i], !has_default, nested_style, err);
+            	}
+                static if (has_default) {
+                    if (pres == ParamResult.skipped)
+                        params[i].setVoid(default_values[i]);
+                } else assert(pres != ParamResult.skipped);
 
-				//if (pres == ParamResult.error)
-					//got_error = true;
-			}
+                if (pres == ParamResult.error) {
+                    got_error = true;
+                }
+            }
 		} catch (HTTPStatusException ex) {
 			throw ex;
 		} catch (Exception ex) {

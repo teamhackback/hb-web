@@ -182,13 +182,14 @@ URLRouter registerWebInterface(C : Object, MethodStyle method_style = MethodStyl
 					registerWebInterface!RT(router, __traits(getMember, instance, M)(), subsettings);
 				} else {
 
-                    import std.meta : AliasSeq, ApplyLeft, Filter, templateAnd;
+                    import std.meta : AliasSeq, ApplyLeft, Filter, templateAnd, templateNot;
                     // adds underscored params to the route param parser
                     static if (!minfo.hadPathUDA) {
 	                    import vibe.internal.meta.funcattr : IsAttributedParameter;
 	                    import std.range.primitives : empty;
-	                    enum bool startsWithUnderscore(string T) = T == "a";
-						alias hasAttributes = ApplyLeft!(IsAttributedParameter, overload);
+	                    enum bool startsWithUnderscore(string T) = T[0] == '_';
+	                    // TODO: make AttributedParameterMetadata map public
+						alias hasAttributes = templateNot!(ApplyLeft!(IsAttributedParameter, overload));
 	                    enum param_names = [Filter!(templateAnd!(startsWithUnderscore, hasAttributes), ParameterIdentifierTuple!overload)];
 	                    // TODO: make this configurable
                         static if (!param_names.empty) {

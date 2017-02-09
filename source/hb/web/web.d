@@ -889,6 +889,8 @@ private void handleRequest(string M, alias overload, C, ERROR...)(HTTPServerRequ
 				} else {
 					res.writeBody(ret);
 				}
+            } else static if (is(RET : string)) {
+			    res.writeBody(ret);
 			} else {
 			    res.writeJsonBody(ret.serializeToJson);
 				//static assert(is(RET == void), M~": Only InputStream, Json and void are supported as return types for route methods.");

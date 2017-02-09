@@ -47,4 +47,4 @@ public import hb.web.auth : anyAuth, auth, noAuth, requiresAuth, Role;
 
 public import vibe.data.json : Json;
 public import vibe.data.serialization : ignore, optional;
-public import vibe.http.common : HTTPStatusException;
+public import vibe.http.common : enforceHTTP, HTTPStatusException;

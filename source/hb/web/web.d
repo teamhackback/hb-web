@@ -411,7 +411,7 @@ void header(string name, string value)
 }
 
 /// sets the response status code
-void status(int statusCode)
+@property void status(int statusCode)
 {
 	assert(s_requestContext.req !is null, "redirect() used outside of a web interface request!");
 	alias ctx = s_requestContext;

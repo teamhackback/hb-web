@@ -88,9 +88,15 @@ unittest {
 	to specify either the `@auth` or the `@noAuth` attribute for every public
 	method.
 */
-@property RequiresAuthAttribute requiresAuth()
+@property auto requiresAuth()
 {
-	return RequiresAuthAttribute.init;
+	return RequiresAuthAttribute!(null).init;
+}
+
+/// ditto
+@property auto requiresAuth(alias authenticate)()
+{
+	return RequiresAuthAttribute!(authenticate).init;
 }
 
 /** Enforces authentication and authorization.
@@ -111,7 +117,7 @@ AuthAttribute!R auth(R)(R roles) { return AuthAttribute!R.init; }
 @property NoAuthAttribute noAuth() { return NoAuthAttribute.init; }
 
 /// private
-struct RequiresAuthAttribute {}
+struct RequiresAuthAttribute(alias T = null) {}
 
 /// private
 struct AuthAttribute(R) { alias Roles = R; }
@@ -150,9 +156,14 @@ package auto handleAuthentication(alias fun, C)(C c, HTTPServerRequest req, HTTP
 		} else {
 			static assert(!is(AR == void), "Missing @auth(...)/@anyAuth attribute for method "~funname~".");
 
-			static if (!__traits(compiles, () @safe { c.authenticate(req, res); } ()))
-				pragma(msg, "Non-@safe .authenticate() methods are deprecated - annotate "~C.stringof~".authenticate() with @safe or @trusted.");
-			return () @trusted { return c.authenticate(req, res); } ();
+			alias assocFun = FunAuthInfo!C;
+			static if (is(assocFun == void)) {
+				static if (!__traits(compiles, () @safe { c.authenticate(req, res); } ()))
+					pragma(msg, "Non-@safe .authenticate() methods are deprecated - annotate "~C.stringof~".authenticate() with @safe or @trusted.");
+				return () @trusted { return c.authenticate(req, res); } ();
+			} else {
+				return assocFun(req, res);
+			}
 		}
 	} else {
 		// make sure that there are no @auth/@noAuth annotations for non-authorizing classes
@@ -229,18 +240,54 @@ unittest {
 	static assert(!is(typeof(isAuthenticated!(D, D.d))));
 }
 
-
-package template AuthInfo(C, CA = C)
+// gets the associated alias function
+package template FunAuthInfo(C, CA = C)
 {
-	import std.traits : BaseTypeTuple, isInstanceOf;
+	import std.traits : BaseTypeTuple, isInstanceOf, TemplateArgsOf;
 	alias ATTS = AliasSeq!(__traits(getAttributes, CA));
 	alias BASES = BaseTypeTuple!CA;
 
 	template impl(size_t idx) {
 		static if (idx < ATTS.length) {
-			static if (is(typeof(ATTS[idx])) && is(typeof(ATTS[idx]) == RequiresAuthAttribute)) {
+			static if (is(typeof(ATTS[idx])) && isInstanceOf!(RequiresAuthAttribute, typeof(ATTS[idx]))) {
+				alias templArgs = TemplateArgsOf!(typeof(ATTS[idx]));
+				static if (is(typeof(C.init.authenticate(HTTPServerRequest.init, HTTPServerResponse.init))))
+					alias impl = void;
+				else static if (is(typeof(templArgs[0](HTTPServerRequest.init, HTTPServerResponse.init))))
+					alias impl = templArgs[0];
+				else
+					static assert (false,
+						C.stringof~" must have an authenticate(...) method that takes HTTPServerRequest/HTTPServerResponse parameters and returns an authentication information object.");
+			} else alias impl = impl!(idx+1);
+		} else alias impl = void;
+	}
+
+	template cimpl(size_t idx) {
+		static if (idx < BASES.length) {
+			alias AI = AuthInfo!(C, BASES[idx]);
+			static if (is(AI == void)) alias cimpl = cimpl!(idx+1);
+			else alias cimpl = AI;
+		} else alias cimpl = void;
+	}
+
+	static if (!is(impl!0 == void)) alias FunAuthInfo = impl!0;
+	else alias FunAuthInfo = cimpl!0;
+}
+
+package template AuthInfo(C, CA = C)
+{
+	import std.traits : BaseTypeTuple, isInstanceOf, TemplateArgsOf;
+	alias ATTS = AliasSeq!(__traits(getAttributes, CA));
+	alias BASES = BaseTypeTuple!CA;
+
+	template impl(size_t idx) {
+		static if (idx < ATTS.length) {
+			static if (is(typeof(ATTS[idx])) && isInstanceOf!(RequiresAuthAttribute, typeof(ATTS[idx]))) {
+				alias templArgs = TemplateArgsOf!(typeof(ATTS[idx]));
 				static if (is(typeof(C.init.authenticate(HTTPServerRequest.init, HTTPServerResponse.init))))
 					alias impl = typeof(C.init.authenticate(HTTPServerRequest.init, HTTPServerResponse.init));
+				else static if (is(typeof(templArgs[0](HTTPServerRequest.init, HTTPServerResponse.init))))
+					alias impl = typeof(templArgs[0](HTTPServerRequest.init, HTTPServerResponse.init));
 				else
 					static assert (false,
 						C.stringof~" must have an authenticate(...) method that takes HTTPServerRequest/HTTPServerResponse parameters and returns an authentication information object.");

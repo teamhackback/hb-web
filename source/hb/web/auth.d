@@ -104,6 +104,7 @@ AuthAttribute!R auth(R)(R roles) { return AuthAttribute!R.init; }
 /** Enforces only authentication.
 */
 @property AuthAttribute!void anyAuth() { return AuthAttribute!void.init; }
+@property AuthAttribute!void auth() { return AuthAttribute!void.init; }
 
 /** Disables authentication checks.
 */

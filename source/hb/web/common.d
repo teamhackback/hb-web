@@ -161,7 +161,7 @@ auto extractHTTPMethodAndName(alias Func, bool indexSpecialCase)()
 	import std.typecons : Nullable;
 
 	immutable httpMethodPrefixes = [
-		HTTPMethod.GET    : [ "get", "query" ],
+		HTTPMethod.GET    : [ "get", "query", "index" ],
 		HTTPMethod.PUT    : [ "put", "set" ],
 		HTTPMethod.PATCH  : [ "update", "patch" ],
 		HTTPMethod.POST   : [ "add", "create", "post" ],

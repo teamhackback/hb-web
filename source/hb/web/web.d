@@ -53,7 +53,7 @@ import std.encoding : sanitize;
 
 	$(TABLE
 		$(TR $(TH HTTP method) $(TH Recognized prefixes))
-		$(TR $(TD GET)	  $(TD get, query))
+		$(TR $(TD GET)	  $(TD get, query, index))
 		$(TR $(TD PUT)    $(TD set, put))
 		$(TR $(TD POST)   $(TD add, create, post))
 		$(TR $(TD DELETE) $(TD remove, erase, delete))

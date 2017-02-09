@@ -41,7 +41,7 @@ alias notFound = HTTPStatus.notFound; // 404
 
 
 
-public import hb.web.web : before, noRoute, path, status;
+public import hb.web.web : before, noRoute, path, rootPathFromName, status;
 public import hb.web.auth : anyAuth, auth, noAuth, requiresAuth, Role;
 
 
